@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medical School Timetable — May 26 → October 2</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d0d;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: #e8e8e8;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  .board {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  /* HEADER */
+  .header {
+    background: #1a1a1a;
+    border-bottom: 2px solid #2a2a2a;
+    padding: 28px 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .header-left .institution {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #555;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .header-left h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f0f0f0;
+    letter-spacing: 1px;
+  }
+  .header-left .subtitle {
+    font-size: 12px;
+    color: #555;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .header-right {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.8;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 18px 36px;
+    border-bottom: 1px solid #222;
+    background: #161616;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #aaa;
+    letter-spacing: 0.5px;
+  }
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* MONTH SECTIONS */
+  .months {
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .month-block {}
+  .month-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #444;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #1f1f1f;
+  }
+
+  /* DOW header */
+  .dow-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin-bottom: 3px;
+  }
+  .dow-cell {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: #3a3a3a;
+    text-align: center;
+    letter-spacing: 1px;
+    padding: 4px 0;
+  }
+  .dow-cell.weekend { color: #2a2a2a; }
+
+  /* DAY GRID */
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+
+  .day {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    position: relative;
+    min-height: 38px;
+    cursor: default;
+    transition: filter 0.15s;
+  }
+  .day:hover { filter: brightness(1.15); }
+
+  .day .num { font-size: 12px; line-height: 1; }
+  .day .tag {
+    font-size: 7px;
+    letter-spacing: 0.5px;
+    margin-top: 3px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    text-align: center;
+    line-height: 1.1;
+  }
+
+  /* Colors */
+  .empty        { background: transparent; border: none; }
+  .weekend      { background: #111; border: 1px solid #1e1e1e; color: #2a2a2a; }
+  .short-posting{ background: #1a3a5c; border: 1px solid #1e4a78; color: #7ab8f5; }
+  .spl          { background: #3a3200; border: 1px solid #5a4e00; color: #f5d020; }
+  .paeds        { background: #0f3320; border: 1px solid #155c35; color: #4ecb71; }
+  .og           { background: #3d1028; border: 1px solid #621840; color: #f57eb6; }
+  .exam         { background: #4d0a0a; border: 1px solid #8b1010; color: #ff6b6b; }
+  .test         { background: #3d2000; border: 1px solid #6b3800; color: #f5a623; }
+  .normal       { background: #181818; border: 1px solid #222; color: #555; }
+
+  /* Exam marker dot */
+  .exam::after {
+    content: '';
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #ff6b6b;
+    opacity: 0.9;
+  }
+
+  /* FOOTER */
+  .footer {
+    padding: 16px 36px;
+    border-top: 1px solid #1e1e1e;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: #2a2a2a;
+    letter-spacing: 1.5px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="board">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="institution">Final Year · Academic Timetable</div>
+      <h1>CLINICAL POSTING SCHEDULE</h1>
+      <div class="subtitle">May 26, 2026 — October 2, 2026</div>
+    </div>
+    <div class="header-right">
+      <div>YEAR 6 · MBBS</div>
+      <div>AY 2025/2026</div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#1a3a5c;border:1px solid #1e4a78;"></div>SHORT POSTING</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3a3200;border:1px solid #5a4e00;"></div>SENIOR POSTING LECTURES</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#0f3320;border:1px solid #155c35;"></div>PAEDIATRICS</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3d1028;border:1px solid #621840;"></div>OBSTETRICS &amp; GYNAECOLOGY</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#4d0a0a;border:1px solid #8b1010;"></div>EXAM DAY</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3d2000;border:1px solid #6b3800;"></div>TEST</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#111;border:1px solid #1e1e1e;"></div>WEEKEND</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#181818;border:1px solid #222;"></div>NORMAL DAY</div>
+  </div>
+
+  <!-- MONTHS -->
+  <div class="months">
+
+    <!-- ===== MAY 2026 (26–31 only) ===== -->
+    <div class="month-block">
+      <div class="month-label">May 2026</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <div class="day-grid">
+        <!-- May 26=Tue, so Mon=empty, Tue=26 -->
+        <div class="day empty"></div>
+        <div class="day short-posting"><span class="num">26</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">27</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">28</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">29</span><span class="tag">Short</span></div>
+        <div class="day weekend"><span class="num">30</span></div>
+        <div class="day weekend"><span class="num">31</span></div>
+      </div>
+    </div>
+
+    <!-- ===== JUNE 2026 ===== -->
+    <div class="month-block">
+      <div class="month-label">June 2026</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <!-- June 1 = Monday -->
+      <div class="day-grid">
+        <div class="day short-posting"><span class="num">1</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">2</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">3</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">4</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">5</span><span class="tag">Short</span></div>
+        <div class="day weekend"><span class="num">6</span></div>
+        <div class="day weekend"><span class="num">7</span></div>
+
+        <div class="day short-posting"><span class="num">8</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">9</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">10</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">11</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">12</span><span class="tag">Short</span></div>
+        <div class="day weekend"><span class="num">13</span></div>
+        <div class="day weekend"><span class="num">14</span></div>
+
+        <div class="day short-posting"><span class="num">15</span><span class="tag">ENT Test</span></div>
+        <div class="day short-posting"><span class="num">16</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">17</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">18</span><span class="tag">Short</span></div>
+        <div class="day short-posting"><span class="num">19</span><span class="tag">Short</span></div>
+        <div class="day weekend"><span class="num">20</span></div>
+        <div class="day weekend"><span class="num">21</span></div>
+
+        <!-- 22 June = Mon → SPL starts -->
+        <div class="day spl"><span class="num">22</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">23</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">24</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">25</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">26</span><span class="tag">SPL</span></div>
+        <div class="day weekend"><span class="num">27</span></div>
+        <div class="day weekend"><span class="num">28</span></div>
+
+        <div class="day spl"><span class="num">29</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">30</span><span class="tag">SPL</span></div>
+        <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+        <div class="day empty"></div><div class="day empty"></div>
+      </div>
+    </div>
+
+    <!-- ===== JULY 2026 ===== -->
+    <div class="month-block">
+      <div class="month-label">July 2026</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <!-- July 1 = Wed -->
+      <div class="day-grid">
+        <div class="day empty"></div><div class="day empty"></div>
+        <!-- Jul 1 Wed -->
+        <div class="day spl"><span class="num">1</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">2</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">3</span><span class="tag">SPL</span></div>
+        <div class="day weekend"><span class="num">4</span></div>
+        <div class="day weekend"><span class="num">5</span></div>
+
+        <div class="day spl"><span class="num">6</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">7</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">8</span><span class="tag">SPL</span></div>
+        <div class="day spl"><span class="num">9</span><span class="tag">SPL</span></div>
+        <!-- Jul 10 = last SPL day -->
+        <div class="day spl"><span class="num">10</span><span class="tag">SPL</span></div>
+        <div class="day weekend"><span class="num">11</span></div>
+        <div class="day weekend"><span class="num">12</span></div>
+
+        <!-- Jul 13 = Mon → Paediatrics starts -->
+        <div class="day paeds"><span class="num">13</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">14</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">15</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">16</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">17</span><span class="tag">Paeds</span></div>
+        <div class="day weekend"><span class="num">18</span></div>
+        <div class="day weekend"><span class="num">19</span></div>
+
+        <div class="day paeds"><span class="num">20</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">21</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">22</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">23</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">24</span><span class="tag">Paeds</span></div>
+        <div class="day weekend"><span class="num">25</span></div>
+        <div class="day weekend"><span class="num">26</span></div>
+
+        <div class="day paeds"><span class="num">27</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">28</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">29</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">30</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">31</span><span class="tag">Paeds</span></div>
+        <div class="day empty"></div><div class="day empty"></div>
+      </div>
+    </div>
+
+    <!-- ===== AUGUST 2026 ===== -->
+    <div class="month-block">
+      <div class="month-label">August 2026</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <!-- Aug 1 = Sat -->
+      <div class="day-grid">
+        <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+        <div class="day empty"></div><div class="day empty"></div>
+        <div class="day weekend"><span class="num">1</span></div>
+        <div class="day weekend"><span class="num">2</span></div>
+
+        <div class="day paeds"><span class="num">3</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">4</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">5</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">6</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">7</span><span class="tag">Paeds</span></div>
+        <div class="day weekend"><span class="num">8</span></div>
+        <div class="day weekend"><span class="num">9</span></div>
+
+        <div class="day paeds"><span class="num">10</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">11</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">12</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">13</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">14</span><span class="tag">Paeds</span></div>
+        <div class="day weekend"><span class="num">15</span></div>
+        <div class="day weekend"><span class="num">16</span></div>
+
+        <div class="day paeds"><span class="num">17</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">18</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">19</span><span class="tag">Paeds</span></div>
+        <div class="day paeds"><span class="num">20</span><span class="tag">Paeds</span></div>
+        <!-- Aug 21 = last Paeds day -->
+        <div class="day paeds"><span class="num">21</span><span class="tag">Paeds</span></div>
+        <div class="day weekend"><span class="num">22</span></div>
+        <div class="day weekend"><span class="num">23</span></div>
+
+        <!-- Aug 24 = Mon → O&G starts -->
+        <div class="day og"><span class="num">24</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">25</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">26</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">27</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">28</span><span class="tag">O&amp;G</span></div>
+        <div class="day weekend"><span class="num">29</span></div>
+        <div class="day weekend"><span class="num">30</span></div>
+
+        <div class="day og"><span class="num">31</span><span class="tag">O&amp;G</span></div>
+        <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+        <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+      </div>
+    </div>
+
+    <!-- ===== SEPTEMBER 2026 ===== -->
+    <div class="month-block">
+      <div class="month-label">September 2026</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <!-- Sep 1 = Tue -->
+      <div class="day-grid">
+        <div class="day empty"></div>
+        <div class="day og"><span class="num">1</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">2</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">3</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">4</span><span class="tag">O&amp;G</span></div>
+        <div class="day weekend"><span class="num">5</span></div>
+        <div class="day weekend"><span class="num">6</span></div>
+
+        <div class="day og"><span class="num">7</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">8</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">9</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">10</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">11</span><span class="tag">O&amp;G</span></div>
+        <div class="day weekend"><span class="num">12</span></div>
+        <div class="day weekend"><span class="num">13</span></div>
+
+        <div class="day og"><span class="num">14</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">15</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">16</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">17</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">18</span><span class="tag">O&amp;G</span></div>
+        <div class="day weekend"><span class="num">19</span></div>
+        <div class="day weekend"><span class="num">20</span></div>
+
+        <div class="day og"><span class="num">21</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">22</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">23</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">24</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">25</span><span class="tag">O&amp;G</span></div>
+        <div class="day weekend"><span class="num">26</span></div>
+        <div class="day weekend"><span class="num">27</span></div>
+
+        <div class="day og"><span class="num">28</span><span class="tag">O&amp;G</span></div>
+        <div class="day og"><span class="num">29</span><span class="tag">O&amp;G</span></div>
+        <!-- Sep 30 = Wed → last O&G day before Oct 2 end -->
+        <div class="day og"><span class="num">30</span><span class="tag">O&amp;G</span></div>
+        <div class="day empty"></div><div class="day empty"></div>
+        <div class="day empty"></div><div class="day empty"></div>
+      </div>
+    </div>
+
+    <!-- ===== OCTOBER 2026 ===== -->
+    <div class="month-block">
+      <div class="month-label">October 2026 — Exams</div>
+      <div class="dow-row">
+        <div class="dow-cell">MON</div><div class="dow-cell">TUE</div><div class="dow-cell">WED</div>
+        <div class="dow-cell">THU</div><div class="dow-cell">FRI</div>
+        <div class="dow-cell weekend">SAT</div><div class="dow-cell weekend">SUN</div>
+      </div>
+      <!-- Oct 1 = Thu -->
+      <div class="day-grid">
+        <div class="day empty"></div><div class="day empty"></div><div class="day empty"></div>
+        <div class="day og"><span class="num">1</span><span class="tag">O&amp;G</span></div>
+        <!-- Oct 2 = last posting day -->
+        <div class="day og"><span class="num">2</span><span class="tag">End</span></div>
+        <div class="day weekend"><span class="num">3</span></div>
+        <div class="day weekend"><span class="num">4</span></div>
+
+        <div class="day normal"><span class="num">5</span></div>
+        <div class="day normal"><span class="num">6</span></div>
+        <div class="day normal"><span class="num">7</span></div>
+        <div class="day normal"><span class="num">8</span></div>
+        <!-- Oct 9 = EXAM -->
+        <div class="day exam"><span class="num">9</span><span class="tag">EXAM</span></div>
+        <div class="day weekend"><span class="num">10</span></div>
+        <div class="day weekend"><span class="num">11</span></div>
+
+        <div class="day normal"><span class="num">12</span></div>
+        <div class="day normal"><span class="num">13</span></div>
+        <div class="day normal"><span class="num">14</span></div>
+        <div class="day normal"><span class="num">15</span></div>
+        <div class="day normal"><span class="num">16</span></div>
+        <div class="day weekend"><span class="num">17</span></div>
+        <div class="day weekend"><span class="num">18</span></div>
+
+        <div class="day normal"><span class="num">19</span></div>
+        <div class="day normal"><span class="num">20</span></div>
+        <div class="day normal"><span class="num">21</span></div>
+        <div class="day normal"><span class="num">22</span></div>
+        <div class="day normal"><span class="num">23</span></div>
+        <div class="day weekend"><span class="num">24</span></div>
+        <div class="day weekend"><span class="num">25</span></div>
+
+        <div class="day normal"><span class="num">26</span></div>
+        <div class="day normal"><span class="num">27</span></div>
+        <div class="day normal"><span class="num">28</span></div>
+        <div class="day normal"><span class="num">29</span></div>
+        <!-- Oct 30 = EXAM -->
+        <div class="day exam"><span class="num">30</span><span class="tag">EXAM</span></div>
+        <div class="day weekend"><span class="num">31</span></div>
+        <div class="day empty"></div>
+      </div>
+    </div>
+
+  </div><!-- end .months -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    SPL = Senior Posting Lectures &nbsp;·&nbsp; O&amp;G = Obstetrics &amp; Gynaecology &nbsp;·&nbsp; Paeds = Paediatrics &nbsp;·&nbsp; Short = Short Posting &nbsp;·&nbsp; ■ = Weekend
+  </div>
+
+</div>
+</body>
+</html>
